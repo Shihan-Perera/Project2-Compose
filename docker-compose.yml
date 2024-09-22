@@ -1,0 +1,35 @@
+version: '3.8'  # Specify the Docker Compose file version
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk11  # Jenkins LTS version with JDK 11
+    container_name: jenkins  # Name of the Jenkins container
+    restart: unless-stopped  # Automatically restart the container unless it is manually stopped
+    ports:
+      - "8080:8080"  # Expose Jenkins UI on port 8080
+      - "50000:50000"  # Expose port 50000 for Jenkins agent communication
+    environment:
+      DOCKER_HOST: "tcp://docker:2376"  # Specify Docker host (DinD container)
+      DOCKER_CERT_PATH: "/certs/client"  # Path to Docker client certificates
+      DOCKER_TLS_VERIFY: "1"  # Enable TLS verification for secure communication with Docker
+    volumes:
+      - jenkins-data:/var/jenkins_home  # Persistent volume for Jenkins home directory
+      - docker-certs-client:/certs/client  # Mount Docker client certificates from DinD
+      - /usr/bin/docker:/usr/bin/docker  # Bind Docker binary to allow Jenkins to run Docker commands
+
+  docker:
+    image: docker:dind  # Docker-in-Docker image
+    container_name: dind  # Name of the DinD container
+    privileged: true  # Enable privileged mode to allow DinD to run Docker commands
+    restart: unless-stopped  # Automatically restart the container unless it is manually stopped
+    environment:
+      DOCKER_TLS_CERTDIR: "/certs"  # Directory where Docker stores TLS certificates
+    volumes:
+      - docker-certs-ca:/certs/ca  # Mount for CA certificates
+      - docker-certs-client:/certs/client  # Mount for client certificates
+      - jenkins-data:/var/jenkins_home  # Shared volume for Jenkins home directory
+
+volumes:
+  jenkins-data:  # Persistent volume for Jenkins home directory
+  docker-certs-ca:  # Persistent volume for CA certificates
+  docker-certs-client:  # Persistent volume for client certificates
